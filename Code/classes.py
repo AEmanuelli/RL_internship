@@ -1,5 +1,8 @@
 import numpy as np
-import matplotlib.pyplt as plt
+import matplotlib.pyplot as plt
+from scipy.special import softmax
+from tqdm.notebook import tqdm 
+
 
 class Qlearning:
     def __init__(self, alpha=0.1, num_steps=10000, temperature=2):
@@ -23,7 +26,7 @@ class Qlearning:
         state = np.random.randint(0, 2)
 
         # Q-learning algorithm
-        for i in range(self.num_steps):
+        for i in tqdm(range(self.num_steps), desc = "steps"):
             logits = self.Q[i][state]/self.temperature
             # Compute softmax probabilities
             probs = np.exp(logits) / np.sum(np.exp(logits))
@@ -73,9 +76,6 @@ class Qlearning:
         axs[0].set_ylabel('Q-value')
         plt.show()
         print(self.Q.mean(axis = 0))
-
-
-
 
 
 
@@ -160,9 +160,30 @@ class Qlearning_CB:
             plt.show()
 
 
-class ReinforcementLearning_SI:
 
-    def __init__(self, num_actions=10, num_agents=2, num_steps=10000, temperature=2, alpha_plus=.01, alpha_minus=.01, p=.75, influence = .1):
+def compute_reward(temperature, p, alpha_plus, alpha_minus, num_steps, seed):
+    np.random.seed(seed)
+    ql = Qlearning_CB(alpha_plus=alpha_plus, alpha_minus=alpha_minus, temperature=temperature, p=p)
+    ql.run()
+    return ql.total_reward
+
+
+
+
+
+
+
+
+class ReinforcementLearning_SI:
+    def __init__(self, num_actions=10, num_agents=2, num_steps=10000, temperature=.1, alpha_plus=.01, alpha_minus=.01, p=.75, influence = .1):
+        def set_parameters(param, num_agents):
+            if isinstance(param, (float, int)):
+                return [param] * num_agents
+            elif len(param) == num_agents:
+                return param
+            else:
+                raise ValueError(f"Length of {param} array must be equal to num_agents.")
+        
         self.num_actions = num_actions
         self.num_agents = num_agents
         self.num_steps = num_steps
@@ -179,14 +200,7 @@ class ReinforcementLearning_SI:
         self.count_songs = np.zeros(num_actions)
 
 
-        def set_parameters(param, num_agents):
-            if isinstance(param, (float, int)):
-                return [param] * num_agents
-            elif len(param) == num_agents:
-                return param
-            else:
-                raise ValueError(f"Length of {param} array must be equal to num_agents.")
-
+        
 
     def choose_action(self, agent):
         # Softmax decision policy
@@ -207,7 +221,7 @@ class ReinforcementLearning_SI:
             the song drawn from the count of influence then the total count of each song is updated accordingly, and the rewards are drawn"""
         rewards = np.zeros(self.num_agents)        
         # Each agent chooses a song
-        for agent in range(self.num_agents):
+        for agent in range(self.num_agents) :
             action = self.choose_action(agent)
             song_probs = softmax(self.count_songs)#/ temperature)
             #influence_song = np.random.choice(range(self.num_actions), p=song_probs)
@@ -223,12 +237,10 @@ class ReinforcementLearning_SI:
         self.final_listenings_percentage = self.count_songs / total_listenings
 
     def run_simulation(self):
-        for step in range(self.num_steps):
+        for step in tqdm(range(self.num_steps), leave = False, desc = "Step progress"):
             self.play_song()
             self.q_values_history[:, :, step] = self.q_values
 
 
 
     
-
-
